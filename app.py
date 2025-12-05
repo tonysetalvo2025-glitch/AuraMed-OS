@@ -139,9 +139,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. DADOS MOCKADOS (Base de Conhecimento) ---
+# --- 4. DADOS MOCKADOS (Base de Conhecimento e Login) ---
 if "data" not in st.session_state:
     st.session_state.data = {
+        # --- NOVO: BANCO DE USUÁRIOS E SENHAS ---
+        "credentials": {
+            # Médicos
+            "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis"},
+            # Pacientes (Login: user / Senha: 123)
+            "ana": {"senha": "123", "role": "patient", "nome": "Ana Silva"},
+            "carlos": {"senha": "123", "role": "patient", "nome": "Carlos Souza"},
+            "mariana": {"senha": "123", "role": "patient", "nome": "Mariana Lima"}
+        },
         "pacientes": [
             {"id": 1, "nome": "Ana Silva", "idade": 32, "historico": "Enxaqueca crônica, alergia a penicilina. Relata estresse no trabalho.", "ultima_consulta": "2023-10-15"},
             {"id": 2, "nome": "Carlos Souza", "idade": 45, "historico": "Hipertensão leve, monitoramento de colesterol. Pratica atividade física regular.", "ultima_consulta": "2023-11-02"},
@@ -212,20 +221,38 @@ def login():
             password = st.text_input("Senha", type="password")
             
             if st.button("Entrar no Sistema", use_container_width=True):
-                # Simulação de Autenticação
-                if user_type == "Médico(a)" and username == "admin" and password == "admin":
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "doctor"
-                    st.session_state.user_name = "Dr. Gênesis"
-                    st.rerun()
-                elif user_type == "Paciente" and username == "user" and password == "user":
-                    st.session_state.logged_in = True
-                    st.session_state.user_role = "patient"
-                    st.session_state.user_name = "Ana Silva"
-                    st.rerun()
+                # Busca usuário no "banco de dados" de credenciais
+                users_db = st.session_state.data.get("credentials", {})
+                user_data = users_db.get(username)
+
+                if user_data:
+                    # Verifica senha e tipo de perfil
+                    if user_data["senha"] == password:
+                        role_match = False
+                        # Valida se o perfil selecionado bate com o do banco
+                        if user_type == "Médico(a)" and user_data["role"] == "doctor":
+                            role_match = True
+                        elif user_type == "Paciente" and user_data["role"] == "patient":
+                            role_match = True
+                        
+                        if role_match:
+                            st.session_state.logged_in = True
+                            st.session_state.user_role = user_data["role"]
+                            st.session_state.user_name = user_data["nome"]
+                            st.success(f"Bem-vindo(a), {user_data['nome']}!")
+                            time.sleep(1) # Feedback visual antes do reload
+                            st.rerun()
+                        else:
+                            st.error(f"Este usuário não tem perfil de {user_type}.")
+                    else:
+                        st.error("Senha incorreta.")
                 else:
-                    st.error("Credenciais inválidas (Tente: admin/admin ou user/user)")
+                    st.error("Usuário não encontrado.")
+
             st.markdown("</div>", unsafe_allow_html=True)
+            
+            # Dica para teste (remover em produção real)
+            st.info("💡 **Dica de Teste:**\n\n**Médico:** admin / admin\n\n**Pacientes:** ana / 123 | carlos / 123")
             
             if not api_key:
                 st.warning("⚠️ Configure a GROQ_API_KEY no .streamlit/secrets.toml")
