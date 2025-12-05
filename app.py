@@ -161,6 +161,14 @@ if "data" not in st.session_state:
             {"paciente": "Carlos Souza", "data": "2023-11-20", "hora": "15:00", "status": "Pendente"},
         ]
     }
+# --- FIX: GARANTIA DE ESTRUTURA PARA EVITAR KEYERROR EM HOT-RELOAD ---
+elif "credentials" not in st.session_state.data:
+    st.session_state.data["credentials"] = {
+        "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis"},
+        "ana": {"senha": "123", "role": "patient", "nome": "Ana Silva"},
+        "carlos": {"senha": "123", "role": "patient", "nome": "Carlos Souza"},
+        "mariana": {"senha": "123", "role": "patient", "nome": "Mariana Lima"}
+    }
 
 # --- 5. LÓGICA DE IA (GROQ + EMBEDDINGS) ---
 
