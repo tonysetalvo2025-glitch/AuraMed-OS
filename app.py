@@ -216,38 +216,95 @@ def login():
     with col2:
         with st.container():
             st.markdown("<div class='metric-card'>", unsafe_allow_html=True)
-            user_type = st.radio("Eu sou:", ["Médico(a)", "Paciente"], horizontal=True)
-            username = st.text_input("Usuário")
-            password = st.text_input("Senha", type="password")
             
-            if st.button("Entrar no Sistema", use_container_width=True):
-                # Busca usuário no "banco de dados" de credenciais
-                users_db = st.session_state.data.get("credentials", {})
-                user_data = users_db.get(username)
+            # --- ABAS DE LOGIN E CADASTRO ---
+            tab_login, tab_register = st.tabs(["Login", "Criar Conta"])
+            
+            # --- ABA LOGIN ---
+            with tab_login:
+                user_type = st.radio("Eu sou:", ["Médico(a)", "Paciente"], horizontal=True, key="login_type")
+                username = st.text_input("Usuário", key="login_user")
+                password = st.text_input("Senha", type="password", key="login_pass")
+                
+                if st.button("Entrar no Sistema", use_container_width=True):
+                    # Busca usuário no "banco de dados" de credenciais
+                    users_db = st.session_state.data.get("credentials", {})
+                    user_data = users_db.get(username)
 
-                if user_data:
-                    # Verifica senha e tipo de perfil
-                    if user_data["senha"] == password:
-                        role_match = False
-                        # Valida se o perfil selecionado bate com o do banco
-                        if user_type == "Médico(a)" and user_data["role"] == "doctor":
-                            role_match = True
-                        elif user_type == "Paciente" and user_data["role"] == "patient":
-                            role_match = True
-                        
-                        if role_match:
-                            st.session_state.logged_in = True
-                            st.session_state.user_role = user_data["role"]
-                            st.session_state.user_name = user_data["nome"]
-                            st.success(f"Bem-vindo(a), {user_data['nome']}!")
-                            time.sleep(1) # Feedback visual antes do reload
-                            st.rerun()
+                    if user_data:
+                        # Verifica senha e tipo de perfil
+                        if user_data["senha"] == password:
+                            role_match = False
+                            # Valida se o perfil selecionado bate com o do banco
+                            if user_type == "Médico(a)" and user_data["role"] == "doctor":
+                                role_match = True
+                            elif user_type == "Paciente" and user_data["role"] == "patient":
+                                role_match = True
+                            
+                            if role_match:
+                                st.session_state.logged_in = True
+                                st.session_state.user_role = user_data["role"]
+                                st.session_state.user_name = user_data["nome"]
+                                st.success(f"Bem-vindo(a), {user_data['nome']}!")
+                                time.sleep(1) # Feedback visual antes do reload
+                                st.rerun()
+                            else:
+                                st.error(f"Este usuário não tem perfil de {user_type}.")
                         else:
-                            st.error(f"Este usuário não tem perfil de {user_type}.")
+                            st.error("Senha incorreta.")
                     else:
-                        st.error("Senha incorreta.")
-                else:
-                    st.error("Usuário não encontrado.")
+                        st.error("Usuário não encontrado.")
+            
+            # --- ABA CADASTRO ---
+            with tab_register:
+                st.markdown("### Novo Cadastro")
+                new_name = st.text_input("Nome Completo", key="reg_name")
+                new_user = st.text_input("Escolha um Usuário", key="reg_user")
+                new_pass = st.text_input("Escolha uma Senha", type="password", key="reg_pass")
+                new_type = st.radio("Tipo de Conta:", ["Paciente", "Médico(a)"], horizontal=True, key="reg_type")
+                
+                # Validação extra para médicos
+                admin_key = ""
+                if new_type == "Médico(a)":
+                    admin_key = st.text_input("Chave de Licença Médica (Simulação: 'crm123')", type="password", key="reg_key")
+                
+                if st.button("Cadastrar", use_container_width=True):
+                    users_db = st.session_state.data.get("credentials", {})
+                    
+                    if new_user in users_db:
+                        st.error("Este nome de usuário já existe.")
+                    elif not new_user or not new_pass or not new_name:
+                        st.warning("Preencha todos os campos.")
+                    else:
+                        # Lógica de validação e cadastro
+                        valid_register = True
+                        role_code = "patient"
+                        
+                        if new_type == "Médico(a)":
+                            if admin_key == "crm123":
+                                role_code = "doctor"
+                            else:
+                                st.error("Chave de licença inválida.")
+                                valid_register = False
+                        
+                        if valid_register:
+                            # Salva no estado da sessão
+                            st.session_state.data["credentials"][new_user] = {
+                                "senha": new_pass,
+                                "role": role_code,
+                                "nome": new_name
+                            }
+                            st.success("Cadastro realizado! Faça login na aba ao lado.")
+                            # Se for paciente, cria um registro vazio para evitar erros
+                            if role_code == "patient":
+                                new_id = len(st.session_state.data["pacientes"]) + 1
+                                st.session_state.data["pacientes"].append({
+                                    "id": new_id,
+                                    "nome": new_name,
+                                    "idade": 0, 
+                                    "historico": "Novo cadastro. Histórico pendente.",
+                                    "ultima_consulta": "Nunca"
+                                })
 
             st.markdown("</div>", unsafe_allow_html=True)
             
