@@ -15,7 +15,7 @@ st.set_page_config(page_title="AuraMed OS", page_icon="⚡", layout="wide", init
 
 logging.basicConfig(level=logging.INFO)
 
-# --- CSS AVANÇADO (CORREÇÃO DE VISIBILIDADE DE INPUTS) ---
+# --- CSS AVANÇADO (CORREÇÃO DE VISIBILIDADE DE INPUTS & ESTILO ENTERPRISE) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700&display=swap');
@@ -27,21 +27,20 @@ st.markdown("""
     }
 
     /* FORÇAR TEXTO ESCURO GERAL */
-    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, div, label {
+    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, div, label, li {
         color: #1e293b !important;
     }
 
     /* CORREÇÃO CRÍTICA DE INPUTS (TEXTO DIGITADO) */
     .stTextInput input, .stTextArea textarea, .stNumberInput input, .stSelectbox div, .stDateInput input {
-        color: #1e293b !important;          /* Cor da fonte escura */
-        -webkit-text-fill-color: #1e293b !important; /* Compatibilidade Webkit */
-        caret-color: #0d9488 !important;    /* Cor do cursor piscante */
-        background-color: #f8fafc !important; /* Fundo claro */
+        color: #1e293b !important;          
+        -webkit-text-fill-color: #1e293b !important;
+        caret-color: #0d9488 !important;    
+        background-color: #ffffff !important; 
         border: 1px solid #cbd5e1 !important;
         border-radius: 8px !important;
     }
     
-    /* Foco nos Inputs */
     .stTextInput input:focus, .stTextArea textarea:focus {
         border-color: #0d9488 !important;
         box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.1) !important;
@@ -53,19 +52,17 @@ st.markdown("""
         border-right: 1px solid #e2e8f0;
     }
     
-    /* Texto dentro da Sidebar */
     [data-testid="stSidebar"] * {
-        color: #1e293b !important;
+        color: #334155 !important;
     }
 
     /* Cards Flutuantes (Glassmorphism Light) */
     .glass-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
+        background: #ffffff;
         border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
         margin-bottom: 20px;
     }
 
@@ -81,22 +78,41 @@ st.markdown("""
     }
     .stButton > button:hover {
         opacity: 0.9;
-        transform: scale(1.02);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
     }
-    /* Exceção: Texto DENTRO do botão deve ser branco */
     .stButton > button p { color: white !important; -webkit-text-fill-color: white !important; }
 
     /* Badge de Status */
     .status-badge {
-        padding: 4px 8px;
-        border-radius: 12px;
+        padding: 4px 10px;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
+        display: inline-block;
     }
     .status-ok { background-color: #dcfce7; color: #166534 !important; }
     .status-warning { background-color: #fef9c3; color: #854d0e !important; }
+    .status-danger { background-color: #fee2e2; color: #991b1b !important; }
     
+    /* Tabelas */
+    [data-testid="stDataFrame"] {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    /* Receita Médica (Visualização de Papel) */
+    .paper-sheet {
+        background: #fff;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 40px;
+        min-height: 500px;
+        border: 1px solid #ddd;
+        font-family: 'Times New Roman', serif;
+    }
+
     /* Remoção de ruído visual */
     #MainMenu, footer, header {visibility: hidden;}
     
@@ -115,11 +131,11 @@ def load_embedding_model():
 if "embedding_model" not in st.session_state:
     st.session_state.embedding_model = load_embedding_model()
 
-# --- INIT SESSION STATE COM DADOS ROBUSTOS ---
+# --- INIT SESSION STATE COM DADOS ROBUSTOS (MOCK) ---
 if "data" not in st.session_state:
     st.session_state.data = {
         "credentials": {
-            "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis", "especialidade": "Clínica Geral"},
+            "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis", "especialidade": "Clínica Geral", "crm": "12345-SP"},
             "ana": {"senha": "123", "role": "patient", "nome": "Ana Silva"},
             "carlos": {"senha": "123", "role": "patient", "nome": "Carlos Souza"}
         },
@@ -127,40 +143,47 @@ if "data" not in st.session_state:
             {
                 "id": 1, "nome": "Ana Silva", "idade": 32, "sexo": "F", 
                 "historico": "Enxaqueca crônica (CID G43). Alergia a Dipirona.",
-                "vitals": {"pressao": [120, 122, 118, 130, 120], "datas": ["Jan", "Fev", "Mar", "Abr", "Mai"]}
+                "vitals": {"pressao": [120, 122, 118, 130, 120], "datas": ["Jan", "Fev", "Mar", "Abr", "Mai"]},
+                "timeline": [
+                    {"data": "2023-01-15", "evento": "Consulta Inicial", "detalhe": "Queixa de dor de cabeça."},
+                    {"data": "2023-02-10", "evento": "Exame Laboratorial", "detalhe": "Hemograma completo - Normal."},
+                    {"data": "2023-05-20", "evento": "Retorno", "detalhe": "Ajuste de medicação."}
+                ]
             },
             {
                 "id": 2, "nome": "Carlos Souza", "idade": 45, "sexo": "M", 
                 "historico": "Hipertensão (CID I10). Uso contínuo de Losartana.",
-                "vitals": {"pressao": [140, 138, 135, 142, 130], "datas": ["Jan", "Fev", "Mar", "Abr", "Mai"]}
+                "vitals": {"pressao": [140, 138, 135, 142, 130], "datas": ["Jan", "Fev", "Mar", "Abr", "Mai"]},
+                "timeline": [
+                    {"data": "2023-03-01", "evento": "Consulta Cardíaca", "detalhe": "PA elevada."},
+                    {"data": "2023-03-05", "evento": "MAPA 24h", "detalhe": "Solicitado."}
+                ]
             },
         ],
         "appointments": [
-            {"id": 101, "paciente": "Ana Silva", "data": "2023-11-20", "hora": "14:00", "tipo": "Retorno", "status": "Confirmado"},
-            {"id": 102, "paciente": "Carlos Souza", "data": "2023-11-20", "hora": "15:00", "tipo": "Primeira Vez", "status": "Pendente"},
-        ]
+            {"id": 101, "paciente": "Ana Silva", "data": "2023-11-20", "hora": "14:00", "tipo": "Retorno", "status": "Confirmado", "valor": 350.00},
+            {"id": 102, "paciente": "Carlos Souza", "data": "2023-11-20", "hora": "15:00", "tipo": "Primeira Vez", "status": "Pendente", "valor": 500.00},
+            {"id": 103, "paciente": "Mariana Lima", "data": "2023-11-20", "hora": "16:00", "tipo": "Retorno", "status": "Em Atendimento", "valor": 350.00}
+        ],
+        "financeiro": {
+            "meses": ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"],
+            "receita": [12500, 15000, 13200, 18000, 16500, 19200],
+            "despesas": [5000, 5200, 4800, 6000, 5500, 5800]
+        },
+        "medicamentos": ["Amoxicilina 500mg", "Dipirona 1g", "Losartana 50mg", "Omeprazol 20mg", "Ibuprofeno 600mg", "Rivotril 0.5mg"]
     }
 elif "credentials" not in st.session_state.data:
-    # Fallback de segurança para hot-reload
     st.session_state.data["credentials"] = {
-        "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis"},
+        "admin": {"senha": "admin", "role": "doctor", "nome": "Dr. Gênesis", "especialidade": "Clínica Geral", "crm": "12345-SP"},
         "ana": {"senha": "123", "role": "patient", "nome": "Ana Silva"}
     }
 
-# --- 3. CORE INTELLIGENCE (FUNÇÕES AVANÇADAS) ---
+# --- 3. CORE INTELLIGENCE & UTILS ---
 
 def ai_structure_soap(raw_notes):
-    """Transforma anotações bagunçadas em Prontuário SOAP estruturado"""
+    """IA para estruturar Prontuário"""
     if not st.session_state.get("groq_client"): return "⚠️ Erro: IA Offline"
-    
-    sys_prompt = """
-    Você é um assistente médico especialista em documentação clínica.
-    Sua tarefa: Converter anotações brutas em formato S.O.A.P. (Subjetivo, Objetivo, Avaliação, Plano).
-    - Extraia sintomas, sinais vitais, diagnósticos prováveis e conduta.
-    - Sugira o código CID-10 se possível.
-    - Use formatação Markdown profissional com negrito e listas.
-    - Seja conciso e técnico.
-    """
+    sys_prompt = "Você é um assistente médico. Converta as notas em formato SOAP (Subjetivo, Objetivo, Avaliação, Plano) profissional."
     try:
         completion = st.session_state.groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -171,175 +194,212 @@ def ai_structure_soap(raw_notes):
     except Exception as e:
         return f"Erro ao processar: {e}"
 
-def plot_vitals(patient_data):
-    """Gera gráfico de sinais vitais"""
-    dates = patient_data['vitals']['datas']
-    values = patient_data['vitals']['pressao']
-    
+def plot_finance_chart():
+    """Gera gráfico financeiro avançado"""
+    fin = st.session_state.data['financeiro']
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=values, mode='lines+markers', name='PAS (Sistólica)', line=dict(color='#0d9488', width=3)))
-    fig.add_trace(go.Scatter(x=dates, y=[80]*len(dates), mode='lines', name='Meta', line=dict(color='#94a3b8', dash='dash')))
-    
-    fig.update_layout(
-        title="Histórico de Pressão Arterial",
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=300,
-        font=dict(color='#1e293b')
-    )
+    fig.add_trace(go.Bar(x=fin['meses'], y=fin['receita'], name='Receita', marker_color='#0d9488'))
+    fig.add_trace(go.Bar(x=fin['meses'], y=fin['despesas'], name='Despesas', marker_color='#ef4444'))
+    fig.update_layout(barmode='group', title="Fluxo de Caixa Semestral", plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#1e293b'))
     return fig
 
-# --- 4. INTERFACE DO SISTEMA ---
+# --- 4. INTERFACE E MÓDULOS ---
 
 def sidebar_nav():
     with st.sidebar:
-        st.markdown("<h2 style='text-align: center; color: #0d9488 !important;'>AuraMed OS <span style='font-size:0.5em'>PRO</span></h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center; color: #0d9488 !important;'>AuraMed OS <span style='font-size:0.5em'>ENT</span></h2>", unsafe_allow_html=True)
         st.markdown("---")
-        
-        menu = st.radio("Navegação", ["Dashboard", "Prontuário Inteligente", "Pacientes", "Configurações"], label_visibility="collapsed")
-        
+        menu = st.radio("Módulos", ["Dashboard", "Prontuário IA", "Receituário", "Pacientes", "Financeiro"], label_visibility="collapsed")
         st.markdown("---")
-        st.info(f"Usuário: **{st.session_state.user_name}**")
+        st.markdown(f"**{st.session_state.user_name}**<br><span style='font-size:0.8em; color:gray'>CRM: {st.session_state.data['credentials']['admin'].get('crm', 'N/A')}</span>", unsafe_allow_html=True)
         if st.button("Sair (Logout)", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
-        
         return menu
 
 def page_doctor_dashboard():
-    st.markdown("### ⚡ Painel de Controle")
+    st.markdown("### ⚡ Command Center")
     
-    # KPI ROW
+    # Notificações
+    st.info("🔔 **Notificação:** Exames de Carlos Souza disponíveis para análise. (Há 2 horas)")
+
+    # KPIs
     k1, k2, k3, k4 = st.columns(4)
-    k1.markdown("<div class='glass-card'><h4>4</h4><span class='status-badge status-ok'>Pacientes Hoje</span></div>", unsafe_allow_html=True)
-    k2.markdown("<div class='glass-card'><h4>15min</h4><span class='status-badge status-warning'>Tempo Médio</span></div>", unsafe_allow_html=True)
-    k3.markdown("<div class='glass-card'><h4>98%</h4><span class='status-badge status-ok'>Eficiência IA</span></div>", unsafe_allow_html=True)
-    k4.markdown("<div class='glass-card'><h4>R$ 2.4k</h4><span class='status-badge status-ok'>Receita Est.</span></div>", unsafe_allow_html=True)
+    total_dia = sum([a['valor'] for a in st.session_state.data['appointments']])
+    k1.markdown(f"<div class='glass-card'><h4>{len(st.session_state.data['appointments'])}</h4><span class='status-badge status-ok'>Agendamentos</span></div>", unsafe_allow_html=True)
+    k2.markdown("<div class='glass-card'><h4>3</h4><span class='status-badge status-warning'>Em Espera</span></div>", unsafe_allow_html=True)
+    k3.markdown(f"<div class='glass-card'><h4>R$ {total_dia:.2f}</h4><span class='status-badge status-ok'>Faturamento Dia</span></div>", unsafe_allow_html=True)
+    k4.markdown("<div class='glass-card'><h4>4.9/5</h4><span class='status-badge status-ok'>NPS Clínica</span></div>", unsafe_allow_html=True)
 
     c1, c2 = st.columns([2, 1])
-    
     with c1:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader("Agenda em Tempo Real")
+        st.subheader("Fluxo de Pacientes Hoje")
         df = pd.DataFrame(st.session_state.data['appointments'])
         st.dataframe(
-            df[['hora', 'paciente', 'tipo', 'status']], 
+            df[['hora', 'paciente', 'tipo', 'status', 'valor']], 
             use_container_width=True, 
             hide_index=True,
             column_config={
-                "status": st.column_config.SelectboxColumn("Status", options=["Confirmado", "Pendente", "Cancelado", "Em Atendimento"])
+                "status": st.column_config.SelectboxColumn("Status", options=["Confirmado", "Pendente", "Em Atendimento", "Finalizado"]),
+                "valor": st.column_config.NumberColumn("Valor", format="R$ %.2f")
             }
         )
         st.markdown("</div>", unsafe_allow_html=True)
-        
     with c2:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.subheader("Assistente Rápido")
-        q = st.text_input("Pergunta clínica rápida (ex: dose amoxicilina pediatria)")
-        if q:
-            with st.spinner("Consultando bases..."):
-                resp = ai_structure_soap(f"Apenas responda a dúvida médica de forma sucinta: {q}")
-                st.success(resp)
+        st.subheader("Ações Rápidas")
+        if st.button("➕ Novo Agendamento", use_container_width=True):
+            st.toast("Módulo de Agendamento Aberto")
+        if st.button("📞 Chamar Próximo", use_container_width=True):
+            st.success("Chamando: Carlos Souza - Sala 02")
         st.markdown("</div>", unsafe_allow_html=True)
 
 def page_magic_prontuario():
-    st.markdown("### ✨ Prontuário Mágico (IA Generativa)")
-    
+    st.markdown("### ✨ Prontuário Inteligente (IA)")
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        pat = st.selectbox("Paciente", [p['nome'] for p in st.session_state.data['pacientes']])
+        raw = st.text_area("Notas Clínicas (Dite ou digite)", height=250, placeholder="Paciente relata cefaleia frontal há 3 dias...")
+        if st.button("Processar Prontuário"):
+            if raw:
+                with st.spinner("Estruturando dados..."):
+                    st.session_state.generated_soap = ai_structure_soap(f"Paciente: {pat}. Notas: {raw}")
+        st.markdown("</div>", unsafe_allow_html=True)
+    with c2:
+        if "generated_soap" in st.session_state:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.markdown("#### Documento Gerado")
+            st.markdown(st.session_state.generated_soap)
+            st.button("Assinar e Salvar", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+def page_prescription():
+    st.markdown("### 💊 Receituário & Atestados")
     c1, c2 = st.columns([1, 1])
     
     with c1:
         st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-        st.markdown("#### 1. Entrada de Dados (Rascunho)")
-        patient_select = st.selectbox("Selecione o Paciente", [p['nome'] for p in st.session_state.data['pacientes']])
-        raw_input = st.text_area("Digite anotações soltas (ex: 'dor cabeça forte 3 dias, vomito, pa 140/90, sem febre')", height=200)
+        pat = st.selectbox("Selecione o Paciente", [p['nome'] for p in st.session_state.data['pacientes']], key="presc_pat")
+        meds = st.multiselect("Medicamentos", st.session_state.data['medicamentos'])
+        obs = st.text_area("Instruções de Uso", "Tomar 1 comprimido a cada 8 horas por 5 dias.")
+        add_atestado = st.checkbox("Gerar Atestado Médico")
+        dias_afastamento = 0
+        if add_atestado:
+            dias_afastamento = st.number_input("Dias de afastamento", min_value=1, value=1)
         
-        if st.button("🪄 Processar com IA"):
-            if raw_input:
-                with st.spinner("Aura está estruturando o caso clínico..."):
-                    structured_note = ai_structure_soap(f"Paciente: {patient_select}. Notas: {raw_input}")
-                    st.session_state.generated_soap = structured_note
-            else:
-                st.warning("Digite algo para a IA processar.")
+        gerar = st.button("Gerar Documento Oficial", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
         
     with c2:
-        if "generated_soap" in st.session_state:
-            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-            st.markdown("#### 2. Prontuário Estruturado (S.O.A.P)")
-            st.markdown(st.session_state.generated_soap)
-            col_act1, col_act2 = st.columns(2)
-            col_act1.button("💾 Salvar no Histórico", use_container_width=True)
-            col_act2.button("🖨️ Imprimir Receita", use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+        if gerar:
+            st.markdown(f"""
+            <div class='paper-sheet'>
+                <div style='text-align:center; border-bottom: 2px solid #333; padding-bottom:10px; margin-bottom:20px;'>
+                    <h2>CLÍNICA AURAMED</h2>
+                    <small>Rua da Saúde, 1000 - Centro | Tel: (11) 99999-9999</small>
+                </div>
+                <p><strong>Paciente:</strong> {pat}</p>
+                <p><strong>Data:</strong> {datetime.date.today().strftime('%d/%m/%Y')}</p>
+                <hr>
+                <h4>USO INTERNO/ORAL</h4>
+                <ul>
+                    {''.join([f'<li style="margin-bottom:10px;"><b>{m}</b><br>{obs}</li>' for m in meds])}
+                </ul>
+                {f"<hr><h4>ATESTADO</h4><p>Atesto para os devidos fins que o paciente necessita de <b>{dias_afastamento} dias</b> de afastamento.</p>" if add_atestado else ""}
+                <br><br><br>
+                <div style='text-align:center;'>
+                    <p>___________________________________</p>
+                    <p>{st.session_state.data['credentials']['admin']['nome']}</p>
+                    <p>{st.session_state.data['credentials']['admin']['crm']}</p>
+                    <p style='color:#0d9488; font-size:0.8em;'>Assinado Digitalmente via AuraMed OS</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+def page_financial():
+    st.markdown("### 💰 Gestão Financeira")
+    
+    # Top Stats
+    f1, f2, f3 = st.columns(3)
+    rec_total = sum(st.session_state.data['financeiro']['receita'])
+    desp_total = sum(st.session_state.data['financeiro']['despesas'])
+    lucro = rec_total - desp_total
+    
+    f1.metric("Receita Semestral", f"R$ {rec_total:,.2f}")
+    f2.metric("Despesas", f"R$ {desp_total:,.2f}", delta="-12%", delta_color="inverse")
+    f3.metric("Lucro Líquido", f"R$ {lucro:,.2f}", delta="Bom")
+    
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.plotly_chart(plot_finance_chart(), use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def page_patient_list():
-    st.markdown("### 📂 Base de Pacientes")
+    st.markdown("### 📂 Prontuário Eletrônico (Timeline)")
+    search = st.text_input("Buscar paciente...", placeholder="Nome, CPF ou Telefone")
     
-    search = st.text_input("Buscar paciente por nome ou condição...", placeholder="Ex: Hipertensão")
-    
-    # Lógica de busca simples + vetorial (simulada na busca textual simples aqui para robustez)
-    filtered = [p for p in st.session_state.data['pacientes'] if search.lower() in p['nome'].lower() or search.lower() in p['historico'].lower()] if search else st.session_state.data['pacientes']
+    filtered = [p for p in st.session_state.data['pacientes'] if search.lower() in p['nome'].lower()] if search else st.session_state.data['pacientes']
     
     for p in filtered:
-        with st.expander(f"👤 {p['nome']} | {p['idade']} anos"):
-            c_info, c_chart = st.columns([1, 2])
-            with c_info:
-                st.write(f"**Histórico:** {p['historico']}")
-                st.write(f"**Sexo:** {p['sexo']}")
-                st.button("Ver Prontuário Completo", key=f"btn_{p['id']}")
-            with c_chart:
-                st.plotly_chart(plot_vitals(p), use_container_width=True, config={'displayModeBar': False})
+        with st.expander(f"👤 {p['nome']} | Última Visita: {p['timeline'][-1]['data']}"):
+            t1, t2 = st.tabs(["Timeline Clínica", "Dados Vitais"])
+            with t1:
+                for event in reversed(p.get('timeline', [])):
+                    st.markdown(f"""
+                    <div style='border-left: 2px solid #e2e8f0; padding-left: 15px; margin-bottom: 20px;'>
+                        <small style='color:#0d9488; font-weight:bold;'>{event['data']}</small>
+                        <h5 style='margin:0;'>{event['evento']}</h5>
+                        <p style='margin:0; color:#64748b;'>{event['detalhe']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            with t2:
+                # Simples gráfico de linha usando plotly express
+                fig = px.line(x=p['vitals']['datas'], y=p['vitals']['pressao'], markers=True, title="Evolução Pressão Arterial")
+                fig.update_layout(plot_bgcolor='white')
+                st.plotly_chart(fig, use_container_width=True)
 
-# --- 5. LÓGICA DE LOGIN (MANTIDA MAS ESTILIZADA) ---
+# --- 5. LOGIN ---
 def login_screen():
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("<div class='glass-card' style='text-align: center;'>", unsafe_allow_html=True)
         st.markdown("<h1 style='color: #0d9488 !important;'>AuraMed OS</h1>", unsafe_allow_html=True)
-        st.markdown("<p>Acesso Seguro</p>", unsafe_allow_html=True)
+        st.markdown("<p>Enterprise Edition</p>", unsafe_allow_html=True)
         
-        tab_login, tab_create = st.tabs(["Entrar", "Criar Conta"])
+        tab_login, tab_create = st.tabs(["Acesso Profissional/Paciente", "Cadastrar"])
         
         with tab_login:
             user = st.text_input("Usuário", key="l_user")
             pwd = st.text_input("Senha", type="password", key="l_pwd")
             role = st.radio("Perfil", ["Médico(a)", "Paciente"], horizontal=True)
             
-            if st.button("Acessar Sistema", use_container_width=True):
+            if st.button("Entrar", use_container_width=True):
                 creds = st.session_state.data.get("credentials", {})
                 u_data = creds.get(user)
-                
-                valid = False
                 if u_data and u_data['senha'] == pwd:
-                    if (role == "Médico(a)" and u_data['role'] == "doctor") or (role == "Paciente" and u_data['role'] == "patient"):
-                        valid = True
-                
-                if valid:
                     st.session_state.logged_in = True
                     st.session_state.user_role = u_data['role']
                     st.session_state.user_name = u_data['nome']
                     st.rerun()
                 else:
-                    st.error("Acesso negado. Verifique as credenciais.")
+                    st.error("Dados incorretos.")
 
         with tab_create:
-            # Lógica simplificada de cadastro para manter o código limpo
             new_u = st.text_input("Novo Usuário")
             new_p = st.text_input("Nova Senha", type="password")
             new_n = st.text_input("Nome Completo")
-            
-            if st.button("Registrar"):
-                if new_u and new_p:
+            if st.button("Criar Conta"):
+                if new_u:
                     st.session_state.data["credentials"][new_u] = {"senha": new_p, "role": "patient", "nome": new_n}
-                    st.success("Conta criada! Faça login.")
-                    st.session_state.data["pacientes"].append({"id": 99, "nome": new_n, "idade": 30, "sexo": "N/A", "historico": "Novo", "vitals": {"pressao": [], "datas": []}})
+                    st.success("Conta criada.")
+                    st.session_state.data["pacientes"].append({"id": 99, "nome": new_n, "idade": 0, "sexo": "-", "historico": "Novo", "vitals": {"pressao":[], "datas":[]}, "timeline": []})
 
         st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("<div style='text-align:center; color:gray; font-size:0.8em;'>Demo: admin/admin (Médico) | ana/123 (Paciente)</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align:center; color:gray; font-size:0.8em;'>Demo: admin/admin | ana/123</div>", unsafe_allow_html=True)
 
-# --- 6. ROTEADOR PRINCIPAL ---
+# --- 6. ROUTER ---
 def main():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -347,24 +407,16 @@ def main():
     if not st.session_state.logged_in:
         login_screen()
     else:
-        # Se for médico, mostra sidebar avançada
         if st.session_state.user_role == "doctor":
             page = sidebar_nav()
             if page == "Dashboard": page_doctor_dashboard()
-            elif page == "Prontuário Inteligente": page_magic_prontuario()
+            elif page == "Prontuário IA": page_magic_prontuario()
+            elif page == "Receituário": page_prescription()
             elif page == "Pacientes": page_patient_list()
-            else: st.info("Configurações em desenvolvimento.")
+            elif page == "Financeiro": page_financial()
         else:
-            # View Simples do Paciente
             st.markdown(f"## Olá, {st.session_state.user_name}")
-            st.markdown("<div class='glass-card'><h3>Meus Sinais Vitais</h3>", unsafe_allow_html=True)
-            # Busca dados do paciente logado
-            meus_dados = next((p for p in st.session_state.data['pacientes'] if p['nome'] == st.session_state.user_name), None)
-            if meus_dados:
-                st.plotly_chart(plot_vitals(meus_dados), use_container_width=True)
-            else:
-                st.info("Sem dados vitais registrados.")
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.info("Portal do Paciente Simplificado (Fale com a recepção para agendamentos)")
             if st.button("Sair"):
                 st.session_state.logged_in = False
                 st.rerun()
