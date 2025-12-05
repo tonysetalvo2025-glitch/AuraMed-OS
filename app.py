@@ -359,7 +359,47 @@ def page_patient_list():
                 fig.update_layout(plot_bgcolor='white')
                 st.plotly_chart(fig, use_container_width=True)
 
-# --- 5. LOGIN ---
+# --- 5. PAINEL DO PACIENTE (NOVO) ---
+def page_patient_dashboard():
+    st.markdown(f"## Olá, {st.session_state.user_name}")
+    
+    p_data = next((p for p in st.session_state.data['pacientes'] if p['nome'] == st.session_state.user_name), None)
+    
+    if p_data:
+        c1, c2 = st.columns([2, 1])
+        with c1:
+             st.markdown("<div class='glass-card'><h4>📈 Meus Sinais Vitais</h4>", unsafe_allow_html=True)
+             fig = px.line(x=p_data['vitals']['datas'], y=p_data['vitals']['pressao'], markers=True)
+             fig.update_layout(plot_bgcolor='white', height=300, margin=dict(l=20, r=20, t=20, b=20))
+             st.plotly_chart(fig, use_container_width=True)
+             st.markdown("</div>", unsafe_allow_html=True)
+             
+             st.markdown("<div class='glass-card'><h4>🗓️ Minha Timeline</h4>", unsafe_allow_html=True)
+             for event in reversed(p_data.get('timeline', [])):
+                    st.markdown(f"""
+                    <div style='border-left: 3px solid #0d9488; padding-left: 15px; margin-bottom: 15px;'>
+                        <b>{event['data']}</b> - {event['evento']}<br>
+                        <span style='color:gray'>{event['detalhe']}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+             st.markdown("</div>", unsafe_allow_html=True)
+
+        with c2:
+            st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+            st.subheader("Próxima Consulta")
+            # Mock de consulta futura
+            st.info("📅 15/12/2025 às 14:00\n\nDr. Gênesis - Clínica Geral")
+            st.button("Reagendar", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    else:
+        st.info("Bem-vindo ao AuraMed. Seus dados clínicos aparecerão aqui após a primeira consulta.")
+
+    if st.sidebar.button("Sair", key="logout_pat"):
+        st.session_state.logged_in = False
+        st.rerun()
+
+# --- 6. LOGIN ---
 def login_screen():
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -390,16 +430,23 @@ def login_screen():
             new_u = st.text_input("Novo Usuário")
             new_p = st.text_input("Nova Senha", type="password")
             new_n = st.text_input("Nome Completo")
+            # NOVA OPÇÃO DE TIPO DE CONTA
+            new_role_sel = st.selectbox("Tipo de Conta", ["Paciente", "Médico(a)"])
+            
             if st.button("Criar Conta"):
                 if new_u:
-                    st.session_state.data["credentials"][new_u] = {"senha": new_p, "role": "patient", "nome": new_n}
-                    st.success("Conta criada.")
-                    st.session_state.data["pacientes"].append({"id": 99, "nome": new_n, "idade": 0, "sexo": "-", "historico": "Novo", "vitals": {"pressao":[], "datas":[]}, "timeline": []})
+                    role_code = "doctor" if new_role_sel == "Médico(a)" else "patient"
+                    st.session_state.data["credentials"][new_u] = {"senha": new_p, "role": role_code, "nome": new_n}
+                    
+                    if role_code == "patient":
+                        st.session_state.data["pacientes"].append({"id": 99, "nome": new_n, "idade": 0, "sexo": "-", "historico": "Novo", "vitals": {"pressao":[], "datas":[]}, "timeline": []})
+                    
+                    st.success(f"Conta de {new_role_sel} criada! Faça login.")
 
         st.markdown("</div>", unsafe_allow_html=True)
         st.markdown("<div style='text-align:center; color:gray; font-size:0.8em;'>Demo: admin/admin | ana/123</div>", unsafe_allow_html=True)
 
-# --- 6. ROUTER ---
+# --- 7. ROUTER ---
 def main():
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
@@ -415,11 +462,8 @@ def main():
             elif page == "Pacientes": page_patient_list()
             elif page == "Financeiro": page_financial()
         else:
-            st.markdown(f"## Olá, {st.session_state.user_name}")
-            st.info("Portal do Paciente Simplificado (Fale com a recepção para agendamentos)")
-            if st.button("Sair"):
-                st.session_state.logged_in = False
-                st.rerun()
+            # Chama o novo Dashboard Completo do Paciente
+            page_patient_dashboard()
 
 if __name__ == "__main__":
     main()
