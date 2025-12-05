@@ -15,7 +15,7 @@ st.set_page_config(page_title="AuraMed OS", page_icon="⚡", layout="wide", init
 
 logging.basicConfig(level=logging.INFO)
 
-# --- CSS AVANÇADO ---
+# --- CSS AVANÇADO (CORREÇÃO DE VISIBILIDADE DE INPUTS) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;500;700&display=swap');
@@ -23,11 +23,28 @@ st.markdown("""
     html, body, .stApp {
         font-family: 'Plus Jakarta Sans', sans-serif;
         background-color: #f0f2f5 !important;
+        color: #1e293b !important;
     }
 
-    /* Tipografia e Cores de Alto Contraste */
-    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, div {
+    /* FORÇAR TEXTO ESCURO GERAL */
+    h1, h2, h3, h4, h5, h6, .stMarkdown, p, span, div, label {
         color: #1e293b !important;
+    }
+
+    /* CORREÇÃO CRÍTICA DE INPUTS (TEXTO DIGITADO) */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input, .stSelectbox div, .stDateInput input {
+        color: #1e293b !important;          /* Cor da fonte escura */
+        -webkit-text-fill-color: #1e293b !important; /* Compatibilidade Webkit */
+        caret-color: #0d9488 !important;    /* Cor do cursor piscante */
+        background-color: #f8fafc !important; /* Fundo claro */
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Foco nos Inputs */
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #0d9488 !important;
+        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.1) !important;
     }
 
     /* Sidebar Estilizada */
@@ -36,6 +53,11 @@ st.markdown("""
         border-right: 1px solid #e2e8f0;
     }
     
+    /* Texto dentro da Sidebar */
+    [data-testid="stSidebar"] * {
+        color: #1e293b !important;
+    }
+
     /* Cards Flutuantes (Glassmorphism Light) */
     .glass-card {
         background: rgba(255, 255, 255, 0.9);
@@ -45,11 +67,6 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         border: 1px solid rgba(255, 255, 255, 0.5);
         margin-bottom: 20px;
-        transition: all 0.3s ease;
-    }
-    .glass-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
 
     /* Botões de Ação Principal */
@@ -66,18 +83,8 @@ st.markdown("""
         opacity: 0.9;
         transform: scale(1.02);
     }
-    .stButton > button p { color: white !important; }
-
-    /* Inputs Modernos */
-    .stTextInput input, .stTextArea textarea {
-        border-radius: 8px;
-        border: 1px solid #cbd5e1;
-        background-color: #f8fafc;
-    }
-    .stTextInput input:focus, .stTextArea textarea:focus {
-        border-color: #0d9488;
-        box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.1);
-    }
+    /* Exceção: Texto DENTRO do botão deve ser branco */
+    .stButton > button p { color: white !important; -webkit-text-fill-color: white !important; }
 
     /* Badge de Status */
     .status-badge {
